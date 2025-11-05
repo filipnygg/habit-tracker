@@ -17,6 +17,8 @@ workflows:
           flutter build ipa --no-codesign
     artifacts:
       - build/ios/ipa/*.ipa
+      - build/ios/archive/*.xcarchive
+      - flutter_drive.log
     publishing:
       email:
         recipients:
