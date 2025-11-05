@@ -68,6 +68,7 @@ class Habit {
   String name;
   String category;
   DateTime startDate;
+  DateTime endDate;
   List<int> activeDays;
   int goalDays;
   List<DateTime> completedDays;
@@ -77,6 +78,7 @@ class Habit {
     required this.name,
     required this.category,
     required this.startDate,
+    required this.endDate,
     required this.activeDays,
     required this.goalDays,
     required this.completedDays,
@@ -87,6 +89,7 @@ class Habit {
         'name': name,
         'category': category,
         'startDate': startDate.toIso8601String(),
+        'endDate': endDate.toIso8601String(),
         'activeDays': activeDays,
         'goalDays': goalDays,
         'completedDays':
@@ -98,6 +101,7 @@ class Habit {
         name: json['name'],
         category: json['category'],
         startDate: DateTime.parse(json['startDate']),
+        endDate: DateTime.parse(json['endDate']),
         activeDays: List<int>.from(json['activeDays']),
         goalDays: json['goalDays'],
         completedDays: (json['completedDays'] as List)
@@ -181,8 +185,11 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final today = DateTime.now();
     final weekday = today.weekday;
-    final todayHabits =
-        habits.where((h) => h.activeDays.contains(weekday)).toList();
+    final todayHabits = habits.where((h) {
+      return h.activeDays.contains(weekday) &&
+          !today.isBefore(h.startDate) &&
+          !today.isAfter(h.endDate);
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -252,35 +259,73 @@ class _HomePageState extends State<HomePage> {
                     );
                   }).toList(),
                 ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(8.0),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
         child: Row(
           children: [
             Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        AllHabitsPage(habits: habits, onUpdate: _updateHabit),
+              child: SizedBox(
+                height: 60,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          AllHabitsPage(habits: habits, onUpdate: _updateHabit),
+                    ),
+                  ),
+                  icon: const Icon(Icons.list, size: 24),
+                  label: const Text(
+                    "All Habits",
+                    style: TextStyle(fontSize: 18),
                   ),
                 ),
-                icon: const Icon(Icons.list),
-                label: const Text("All Habits"),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  final newHabit = await Navigator.push<Habit>(
+              child: SizedBox(
+                height: 60,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () async {
+                    final newHabit = await Navigator.push<Habit>(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => AddHabitPage(onAdd: _addHabit)));
-                  if (newHabit != null) _addHabit(newHabit);
-                },
-                icon: const Icon(Icons.add),
-                label: const Text("New Habit"),
+                        builder: (_) => const AddHabitPage(),
+                      ),
+                    );
+                    if (newHabit != null) _addHabit(newHabit);
+                  },
+                  icon: const Icon(Icons.add, size: 26),
+                  label: const Text(
+                    "New Habit",
+                    style: TextStyle(fontSize: 18),
+                  ),
+                ),
               ),
             ),
           ],
@@ -291,8 +336,7 @@ class _HomePageState extends State<HomePage> {
 }
 
 class AddHabitPage extends StatefulWidget {
-  final Function(Habit) onAdd;
-  const AddHabitPage({super.key, required this.onAdd});
+  const AddHabitPage({super.key});
 
   @override
   State<AddHabitPage> createState() => _AddHabitPageState();
@@ -302,6 +346,7 @@ class _AddHabitPageState extends State<AddHabitPage> {
   final nameCtrl = TextEditingController();
   final categoryCtrl = TextEditingController();
   DateTime startDate = DateTime.now();
+  DateTime endDate = DateTime.now().add(const Duration(days: 30));
   List<int> selectedDays = [];
   int goalDays = 30;
 
@@ -333,6 +378,19 @@ class _AddHabitPageState extends State<AddHabitPage> {
                   initialDate: startDate,
                 );
                 if (picked != null) setState(() => startDate = picked);
+              },
+            ),
+            ListTile(
+              title: const Text("End Date"),
+              subtitle: Text(DateFormat.yMMMd().format(endDate)),
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  firstDate: startDate,
+                  lastDate: DateTime(2100),
+                  initialDate: endDate,
+                );
+                if (picked != null) setState(() => endDate = picked);
               },
             ),
             const SizedBox(height: 12),
@@ -376,11 +434,11 @@ class _AddHabitPageState extends State<AddHabitPage> {
                       name: nameCtrl.text,
                       category: categoryCtrl.text,
                       startDate: startDate,
+                      endDate: endDate,
                       activeDays: selectedDays,
                       goalDays: goalDays,
                       completedDays: [],
                       notes: {});
-                  widget.onAdd(habit);
                   Navigator.pop(context, habit);
                 },
                 child: const Text("Add Habit"))
@@ -450,6 +508,7 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
           children: [
             Text("Category: ${widget.habit.category}"),
             Text("Start Date: ${DateFormat.yMMMd().format(widget.habit.startDate)}"),
+            Text("End Date: ${DateFormat.yMMMd().format(widget.habit.endDate)}"),
             const SizedBox(height: 10),
             Text("Active Days: ${widget.habit.activeDays.map((d) => DateFormat.E().format(DateTime(2023, 1, d + 1))).join(', ')}"),
             const SizedBox(height: 20),
