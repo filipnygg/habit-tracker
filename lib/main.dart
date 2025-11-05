@@ -160,15 +160,22 @@ class _HomePageState extends State<HomePage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
+        backgroundColor: Theme.of(context).dialogBackgroundColor,
         title: const Text('Delete this habit?'),
         content: const Text('This cannot be undone.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(foregroundColor: Colors.grey),
+            child: const Text('Cancel'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete', style: TextStyle(color: Colors.red))),
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.redAccent.shade100,
+            ),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -197,16 +204,18 @@ class _HomePageState extends State<HomePage> {
           icon: const Icon(Icons.info_outline),
           onPressed: () {
             showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                      title: const Text("Habit Tracker v1.0"),
-                      content: const Text("Made by Filip Nygren"),
-                      actions: [
-                        TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text("Close"))
-                      ],
-                    ));
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text("Habit Tracker v1.0"),
+                content: const Text("Made by Filip Nygren"),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Close"),
+                  ),
+                ],
+              ),
+            );
           },
         ),
         title: Column(
@@ -219,8 +228,9 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           IconButton(
-              icon: const Icon(Icons.brightness_6),
-              onPressed: widget.toggleTheme),
+            icon: const Icon(Icons.brightness_6),
+            onPressed: widget.toggleTheme,
+          ),
         ],
       ),
       body: isLoading
@@ -235,26 +245,31 @@ class _HomePageState extends State<HomePage> {
                       title: Text(habit.name),
                       subtitle: Text(habit.category),
                       trailing: Checkbox(
-                          value: done,
-                          onChanged: (val) {
-                            setState(() {
-                              if (val == true) {
-                                habit.completedDays.add(today);
-                              } else {
-                                habit.completedDays.removeWhere(
-                                    (d) => DateUtils.isSameDay(d, today));
-                              }
-                              _saveHabits();
-                            });
-                          }),
+                        value: done,
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              habit.completedDays.add(today);
+                            } else {
+                              habit.completedDays.removeWhere(
+                                (d) => DateUtils.isSameDay(d, today),
+                              );
+                            }
+                            _saveHabits();
+                          });
+                        },
+                      ),
                       onTap: () {
                         Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => HabitDetailPage(
-                                    habit: habit,
-                                    onDelete: _deleteHabit,
-                                    onUpdate: _updateHabit)));
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => HabitDetailPage(
+                              habit: habit,
+                              onDelete: _deleteHabit,
+                              onUpdate: _updateHabit,
+                            ),
+                          ),
+                        );
                       },
                     );
                   }).toList(),
@@ -289,8 +304,11 @@ class _HomePageState extends State<HomePage> {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          AllHabitsPage(habits: habits, onUpdate: _updateHabit),
+                      builder: (_) => AllHabitsPage(
+                        habits: habits,
+                        onUpdate: _updateHabit,
+                        onDelete: _deleteHabit,
+                      ),
                     ),
                   ),
                   icon: const Icon(Icons.list, size: 24),
@@ -377,7 +395,12 @@ class _AddHabitPageState extends State<AddHabitPage> {
                   lastDate: DateTime(2100),
                   initialDate: startDate,
                 );
-                if (picked != null) setState(() => startDate = picked);
+                if (picked != null) {
+                  setState(() {
+                    startDate = picked;
+                    endDate = startDate.add(Duration(days: goalDays));
+                  });
+                }
               },
             ),
             ListTile(
@@ -424,24 +447,35 @@ class _AddHabitPageState extends State<AddHabitPage> {
                 DropdownMenuItem(value: 60, child: Text("60 days")),
                 DropdownMenuItem(value: 90, child: Text("90 days")),
               ],
-              onChanged: (v) => setState(() => goalDays = v ?? 30),
+              onChanged: (v) {
+                if (v != null) {
+                  setState(() {
+                    goalDays = v;
+                    endDate = startDate.add(Duration(days: goalDays));
+                  });
+                }
+              },
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-                onPressed: () {
-                  if (nameCtrl.text.isEmpty) return;
-                  final habit = Habit(
-                      name: nameCtrl.text,
-                      category: categoryCtrl.text,
-                      startDate: startDate,
-                      endDate: endDate,
-                      activeDays: selectedDays,
-                      goalDays: goalDays,
-                      completedDays: [],
-                      notes: {});
-                  Navigator.pop(context, habit);
-                },
-                child: const Text("Add Habit"))
+              onPressed: () {
+                if (nameCtrl.text.isEmpty) return;
+                final habit = Habit(
+                  name: nameCtrl.text,
+                  category: categoryCtrl.text,
+                  startDate: startDate,
+                  endDate: endDate,
+                  activeDays: selectedDays.isEmpty
+                      ? [1, 2, 3, 4, 5, 6, 7]
+                      : selectedDays,
+                  goalDays: goalDays,
+                  completedDays: [],
+                  notes: {},
+                );
+                Navigator.pop(context, habit);
+              },
+              child: const Text("Add Habit"),
+            ),
           ],
         ),
       ),
@@ -452,7 +486,14 @@ class _AddHabitPageState extends State<AddHabitPage> {
 class AllHabitsPage extends StatelessWidget {
   final List<Habit> habits;
   final Function(Habit) onUpdate;
-  const AllHabitsPage({super.key, required this.habits, required this.onUpdate});
+  final Function(Habit) onDelete;
+
+  const AllHabitsPage({
+    super.key,
+    required this.habits,
+    required this.onUpdate,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -460,19 +501,24 @@ class AllHabitsPage extends StatelessWidget {
       appBar: AppBar(title: const Text("All Habits")),
       body: ListView(
         children: habits
-            .map((h) => ListTile(
-                  title: Text(h.name),
-                  subtitle: Text(h.category),
-                  onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => HabitDetailPage(
-                                habit: h,
-                                onDelete: (_) {},
-                                onUpdate: onUpdate)));
-                  },
-                ))
+            .map(
+              (h) => ListTile(
+                title: Text(h.name),
+                subtitle: Text(h.category),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => HabitDetailPage(
+                        habit: h,
+                        onDelete: onDelete,
+                        onUpdate: onUpdate,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            )
             .toList(),
       ),
     );
@@ -483,11 +529,13 @@ class HabitDetailPage extends StatefulWidget {
   final Habit habit;
   final Function(Habit) onUpdate;
   final Function(Habit) onDelete;
-  const HabitDetailPage(
-      {super.key,
-      required this.habit,
-      required this.onUpdate,
-      required this.onDelete});
+
+  const HabitDetailPage({
+    super.key,
+    required this.habit,
+    required this.onUpdate,
+    required this.onDelete,
+  });
 
   @override
   State<HabitDetailPage> createState() => _HabitDetailPageState();
@@ -507,18 +555,25 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
         child: ListView(
           children: [
             Text("Category: ${widget.habit.category}"),
-            Text("Start Date: ${DateFormat.yMMMd().format(widget.habit.startDate)}"),
-            Text("End Date: ${DateFormat.yMMMd().format(widget.habit.endDate)}"),
+            Text(
+                "Start Date: ${DateFormat.yMMMd().format(widget.habit.startDate)}"),
+            Text(
+                "End Date: ${DateFormat.yMMMd().format(widget.habit.endDate)}"),
             const SizedBox(height: 10),
-            Text("Active Days: ${widget.habit.activeDays.map((d) => DateFormat.E().format(DateTime(2023, 1, d + 1))).join(', ')}"),
+            Text(
+              "Active Days: ${widget.habit.activeDays.map((d) => DateFormat.E().format(DateTime(2023, 1, d + 1))).join(', ')}",
+            ),
             const SizedBox(height: 20),
             LinearProgressIndicator(value: progress),
             Text("$completedCount / ${widget.habit.goalDays} days completed"),
             const SizedBox(height: 30),
             ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                onPressed: () => widget.onDelete(widget.habit),
-                child: const Text("Delete Habit"))
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent.shade100,
+              ),
+              onPressed: () => widget.onDelete(widget.habit),
+              child: const Text("Delete Habit"),
+            ),
           ],
         ),
       ),
