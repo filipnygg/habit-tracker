@@ -7,6 +7,9 @@ void main() {
   runApp(const HabitTrackerApp());
 }
 
+/// ----------------------------
+/// THEME & APP SHELL
+/// ----------------------------
 class HabitTrackerApp extends StatefulWidget {
   const HabitTrackerApp({super.key});
 
@@ -39,31 +42,88 @@ class _HabitTrackerAppState extends State<HabitTrackerApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Zen Mint palette
+    const mint = Color(0xFFA8E6CF);
+    const aqua = Color(0xFFAEFFFF);
+    const ivory = Color(0xFFFAFAFA);
+    const softGraphite = Color(0xFF1E1E22);
+    const graphiteCard = Color(0xFF26272B);
+
+        final lightTheme = ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: mint,
+        primary: mint,
+        secondary: aqua,
+        surface: ivory, // ✅ replaced background (deprecated)
+      ),
+      scaffoldBackgroundColor: ivory,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.black87,
+        centerTitle: false,
+      ),
+      textTheme: const TextTheme(
+        titleLarge: TextStyle(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+        ),
+      ),
+      cardTheme: const CardThemeData(
+        color: Colors.white, // ✅ replaced with CardThemeData
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(20)),
+        ),
+      ),
+    );
+
+    final darkTheme = ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: mint,
+        brightness: Brightness.dark,
+        primary: mint,
+        secondary: aqua,
+        surface: softGraphite, // ✅ replaced background
+      ),
+      scaffoldBackgroundColor:
+          const Color(0xFF202125), // ✅ softer than pure black
+      cardColor: graphiteCard.withValues(alpha: 0.9), // ✅ new withValues
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.white70,
+      ),
+      textTheme: const TextTheme(
+        titleLarge: TextStyle(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: graphiteCard.withValues(alpha: 0.9),
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(20)),
+        ),
+      ),
+    );
     return MaterialApp(
-      title: 'Habits',
+      title: 'Habits', // This does NOT change device display name.
       debugShowCheckedModeBanner: false,
       themeMode: _themeMode,
-      theme: ThemeData(
-        primarySwatch: Colors.indigo,
-        scaffoldBackgroundColor: Colors.white,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          foregroundColor: Colors.black,
-        ),
-      ),
-      darkTheme: ThemeData.dark().copyWith(
-        colorScheme: const ColorScheme.dark(
-          primary: Colors.indigo,
-          secondary: Colors.indigoAccent,
-        ),
-        scaffoldBackgroundColor: const Color(0xFF121212),
-      ),
+      theme: lightTheme,
+      darkTheme: darkTheme,
       home: HomePage(toggleTheme: _toggleTheme),
     );
   }
 }
 
+/// ----------------------------
+/// DATA MODEL
+/// ----------------------------
 class Habit {
   String name;
   String category;
@@ -71,7 +131,7 @@ class Habit {
   DateTime endDate;
   List<int> activeDays; // 1=Mon ... 7=Sun
   int goalDays;
-  List<DateTime> completedDays; // unique dates
+  List<DateTime> completedDays; // unique days
   Map<String, String> notes; // yyyy-MM-dd -> note
 
   Habit({
@@ -111,6 +171,189 @@ class Habit {
       );
 }
 
+/// ----------------------------
+/// ANIMATED GRADIENT BACKGROUND
+/// ----------------------------
+class ZenAnimatedBackground extends StatefulWidget {
+  final Widget child;
+  const ZenAnimatedBackground({super.key, required this.child});
+
+  @override
+  State<ZenAnimatedBackground> createState() => _ZenAnimatedBackgroundState();
+}
+
+class _ZenAnimatedBackgroundState extends State<ZenAnimatedBackground>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<Alignment> _begin;
+  late final Animation<Alignment> _end;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 8))
+      ..repeat(reverse: true);
+    _begin = AlignmentTween(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _end = AlignmentTween(
+      begin: Alignment(0.8, -0.8),
+      end: Alignment(-0.8, 0.8),
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Light mint ↔ aqua; Dark: graphite ↔ mint
+    final colors = isDark
+        ? [const Color(0xFF1E1E22), const Color(0xFF2B2C31), const Color(0xFFA8E6CF)]
+        : [const Color(0xFFA8E6CF), const Color(0xFFAEFFFF), const Color(0xFFFFFFFF)];
+
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) {
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: _begin.value,
+                  end: _end.value,
+                  colors: colors,
+                ),
+              ),
+            ),
+            // Light veil for softness
+            Container(
+              color: isDark
+                  ? Colors.black.withOpacity(0.25)
+                  : Colors.white.withOpacity(0.25),
+            ),
+            widget.child,
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// ----------------------------
+/// ANIMATED GRADIENT BUTTON
+/// ----------------------------
+class ZenGradientButton extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  const ZenGradientButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  State<ZenGradientButton> createState() => _ZenGradientButtonState();
+}
+
+class _ZenGradientButtonState extends State<ZenGradientButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<Alignment> _begin;
+  late final Animation<Alignment> _end;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl =
+        AnimationController(vsync: this, duration: const Duration(seconds: 6))
+          ..repeat(reverse: true);
+    _begin = AlignmentTween(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _end = AlignmentTween(
+      begin: Alignment(0.8, -0.6),
+      end: Alignment(-0.6, 0.8),
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final colors = isDark
+        ? [const Color(0xFF3A3B40), const Color(0xFFA8E6CF)]
+        : [const Color(0xFFA8E6CF), const Color(0xFFAEFFFF)];
+
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) {
+        return Container(
+          height: 64,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: _begin.value,
+              end: _end.value,
+              colors: colors,
+            ),
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.25 : 0.12),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(22),
+              onTap: widget.onPressed,
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(widget.icon, size: 24, color: isDark ? Colors.white : Colors.black87),
+                    const SizedBox(width: 10),
+                    Text(
+                      widget.label,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// ----------------------------
+/// HOME PAGE (grouped, centered, bubbly)
+/// ----------------------------
 class HomePage extends StatefulWidget {
   final VoidCallback toggleTheme;
   const HomePage({super.key, required this.toggleTheme});
@@ -152,7 +395,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _updateHabit(Habit habit) {
-    setState(() {}); // mutate in place
+    setState(() {}); // mutated in place
     _saveHabits();
   }
 
@@ -228,6 +471,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final today = DateTime.now();
     final weekday = today.weekday;
+
     final todayHabits = habits.where((h) {
       return h.activeDays.contains(weekday) &&
           !today.isBefore(h.startDate) &&
@@ -241,150 +485,207 @@ class _HomePageState extends State<HomePage> {
       grouped.putIfAbsent(cat, () => []).add(h);
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.info_outline),
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: const Text("Habits v2.1"),
-                content: const Text("Made by Filip Nygren"),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("Close"),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Today's Habits"),
-            Text(DateFormat('EEEE, MMMM d').format(today),
-                style: Theme.of(context).textTheme.bodySmall),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.brightness_6),
-            onPressed: widget.toggleTheme,
-          ),
-        ],
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : todayHabits.isEmpty
-              ? const Center(child: Text("No habits for today"))
-              : ListView(
-                  padding: const EdgeInsets.only(bottom: 80),
-                  children: grouped.entries.map((entry) {
-                    final cat = entry.key;
-                    final list = entry.value;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            cat,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium!
-                                .copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          ...list.map((habit) {
-                            final done = habit.completedDays
-                                .any((d) => DateUtils.isSameDay(d, today));
-                            return Card(
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: ListTile(
-                                title: Text(habit.name),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      tooltip: 'Add note',
-                                      icon: const Icon(Icons.note_add_outlined),
-                                      onPressed: () => _editNoteFor(habit, today),
-                                    ),
-                                    Checkbox(
-                                      value: done,
-                                      onChanged: (val) {
-                                        setState(() {
-                                          if (val == true) {
-                                            final exists = habit.completedDays.any(
-                                              (d) => DateUtils.isSameDay(d, today),
-                                            );
-                                            if (!exists) {
-                                              habit.completedDays.add(today);
-                                            }
-                                          } else {
-                                            habit.completedDays.removeWhere(
-                                              (d) => DateUtils.isSameDay(d, today),
-                                            );
-                                          }
-                                          _saveHabits();
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => HabitDetailPage(
-                                        habit: habit,
-                                        onDelete: _deleteHabit,
-                                        onUpdate: _updateHabit,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            );
-                          }).toList(),
-                        ],
-                      ),
-                    );
-                  }).toList(),
+    // Build categories for "New Habit"
+    final categories = habits
+        .map((h) => h.category.trim())
+        .where((c) => c.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    return ZenAnimatedBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          toolbarHeight: 86, // moved down for calm spacing
+          leading: IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text("Habits v2.2 Zen Mint"),
+                  content: const Text("Made by Filip Nygren"),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Close"),
+                    ),
+                  ],
                 ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
+              );
+            },
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
+          title: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text("Today's Habits", textAlign: TextAlign.center),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('EEEE, MMMM d').format(today),
+                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.brightness_6),
+              onPressed: widget.toggleTheme,
             ),
           ],
         ),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
-        child: Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 60,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+        body: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : todayHabits.isEmpty
+                ? const Center(child: Text("No habits for today"))
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                    children: grouped.entries.map((entry) {
+                      final cat = entry.key;
+                      final list = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 28),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Centered category title
+                            Align(
+                              alignment: Alignment.center,
+                              child: ShaderMask(
+                                shaderCallback: (rect) => const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [Color(0xFFA8E6CF), Color(0xFFAEFFFF)],
+                                ).createShader(rect),
+                                child: Text(
+                                  cat,
+                                  style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                        letterSpacing: 0.3,
+                                      ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ...list.map((habit) {
+                              final done = habit.completedDays
+                                  .any((d) => DateUtils.isSameDay(d, today));
+                              return Card(
+                                elevation: 0,
+                                margin: const EdgeInsets.symmetric(vertical: 8),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 18),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        habit.name,
+                                        textAlign: TextAlign.center,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium!
+                                            .copyWith(fontWeight: FontWeight.w800),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          FilledButton.tonalIcon(
+                                            onPressed: () => _editNoteFor(habit, today),
+                                            icon: const Icon(Icons.note_add_outlined),
+                                            label: const Text("Note"),
+                                            style: FilledButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 16, vertical: 10),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(20),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          FilledButton.icon(
+                                            onPressed: () {
+                                              setState(() {
+                                                if (done) {
+                                                  habit.completedDays.removeWhere(
+                                                    (d) => DateUtils.isSameDay(d, today),
+                                                  );
+                                                } else {
+                                                  final exists = habit.completedDays.any(
+                                                    (d) => DateUtils.isSameDay(d, today),
+                                                  );
+                                                  if (!exists) habit.completedDays.add(today);
+                                                }
+                                                _saveHabits();
+                                              });
+                                            },
+                                            icon: Icon(done
+                                                ? Icons.check_circle
+                                                : Icons.radio_button_unchecked),
+                                            label: Text(done ? "Checked" : "Check"),
+                                            style: FilledButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 18, vertical: 10),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(20),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        habit.category,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(color: Colors.black54),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      // Tap the card to open details
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => HabitDetailPage(
+                                                habit: habit,
+                                                onDelete: _deleteHabit,
+                                                onUpdate: _updateHabit,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text("Details"),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                   ),
+
+        // Floating gradient buttons, no container; lifted higher
+        bottomNavigationBar: SafeArea(
+          minimum: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          child: Row(
+            children: [
+              Expanded(
+                child: ZenGradientButton(
+                  icon: Icons.list,
+                  label: "All Habits",
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -395,48 +696,37 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  icon: const Icon(Icons.list, size: 24),
-                  label: const Text("All Habits", style: TextStyle(fontSize: 18)),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: SizedBox(
-                height: 60,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: ZenGradientButton(
+                  icon: Icons.add,
+                  label: "New Habit",
                   onPressed: () async {
-                    final categories = habits
-                        .map((h) => h.category.trim())
-                        .where((c) => c.isNotEmpty)
-                        .toSet()
-                        .toList()
-                      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
                     final newHabit = await Navigator.push<Habit>(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => AddHabitPage(existingCategories: categories),
+                        builder: (_) => AddHabitPage(
+                          existingCategories: categories,
+                        ),
                       ),
                     );
                     if (newHabit != null) _addHabit(newHabit);
                   },
-                  icon: const Icon(Icons.add, size: 26),
-                  label: const Text("New Habit", style: TextStyle(fontSize: 18)),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+/// ----------------------------
+/// ADD HABIT PAGE (with categories)
+/// ----------------------------
 class AddHabitPage extends StatefulWidget {
   final List<String> existingCategories;
   const AddHabitPage({super.key, required this.existingCategories});
@@ -464,20 +754,19 @@ class _AddHabitPageState extends State<AddHabitPage> {
 
   @override
   Widget build(BuildContext context) {
-    final hasCategories = widget.existingCategories.isNotEmpty;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text("New Habit")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
+    return ZenAnimatedBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(title: const Text("New Habit")),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
             TextField(
               controller: nameCtrl,
               decoration: const InputDecoration(labelText: "Habit name"),
             ),
             const SizedBox(height: 12),
-            if (hasCategories)
+            if (widget.existingCategories.isNotEmpty)
               DropdownButtonFormField<String>(
                 value: selectedCategory,
                 decoration: const InputDecoration(labelText: "Pick a category"),
@@ -489,7 +778,9 @@ class _AddHabitPageState extends State<AddHabitPage> {
             TextField(
               controller: newCategoryCtrl,
               decoration: InputDecoration(
-                labelText: hasCategories ? "Or create new category" : "Category",
+                labelText: widget.existingCategories.isNotEmpty
+                    ? "Or create new category"
+                    : "Category",
               ),
             ),
             const SizedBox(height: 12),
@@ -527,7 +818,7 @@ class _AddHabitPageState extends State<AddHabitPage> {
             const SizedBox(height: 12),
             const Text("Active Days"),
             Wrap(
-              spacing: 4,
+              spacing: 6,
               children: List.generate(7, (i) {
                 const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                 final selected = selectedDays.contains(i + 1);
@@ -565,7 +856,9 @@ class _AddHabitPageState extends State<AddHabitPage> {
               },
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
+            ZenGradientButton(
+              icon: Icons.check_rounded,
+              label: "Add Habit",
               onPressed: () {
                 if (nameCtrl.text.trim().isEmpty) return;
                 final category = finalCategory;
@@ -584,7 +877,6 @@ class _AddHabitPageState extends State<AddHabitPage> {
                 );
                 Navigator.pop(context, habit);
               },
-              child: const Text("Add Habit"),
             ),
           ],
         ),
@@ -593,6 +885,9 @@ class _AddHabitPageState extends State<AddHabitPage> {
   }
 }
 
+/// ----------------------------
+/// ALL HABITS LIST
+/// ----------------------------
 class AllHabitsPage extends StatelessWidget {
   final List<Habit> habits;
   final Function(Habit) onUpdate;
@@ -607,14 +902,20 @@ class AllHabitsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("All Habits")),
-      body: ListView(
-        children: habits
-            .map(
-              (h) => ListTile(
-                title: Text(h.name),
-                subtitle: Text(h.category),
+    return ZenAnimatedBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(title: const Text("All Habits")),
+        body: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          itemCount: habits.length,
+          itemBuilder: (_, i) {
+            final h = habits[i];
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              child: ListTile(
+                title: Text(h.name, textAlign: TextAlign.center),
+                subtitle: Text(h.category, textAlign: TextAlign.center),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -628,13 +929,17 @@ class AllHabitsPage extends StatelessWidget {
                   );
                 },
               ),
-            )
-            .toList(),
+            );
+          },
+        ),
       ),
     );
   }
 }
 
+/// ----------------------------
+/// HABIT DETAIL (progress, history, notes)
+/// ----------------------------
 class HabitDetailPage extends StatefulWidget {
   final Habit habit;
   final Function(Habit) onUpdate;
@@ -706,10 +1011,11 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
   }
 
   List<DateTime> _activeDateRange() {
-    // Only include dates on the habit's active weekdays.
     final dates = <DateTime>[];
-    DateTime d = DateTime(widget.habit.startDate.year, widget.habit.startDate.month, widget.habit.startDate.day);
-    final end = DateTime(widget.habit.endDate.year, widget.habit.endDate.month, widget.habit.endDate.day);
+    DateTime d = DateTime(widget.habit.startDate.year,
+        widget.habit.startDate.month, widget.habit.startDate.day);
+    final end = DateTime(widget.habit.endDate.year, widget.habit.endDate.month,
+        widget.habit.endDate.day);
     while (!d.isAfter(end)) {
       if (widget.habit.activeDays.contains(d.weekday)) {
         dates.add(d);
@@ -736,11 +1042,11 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
         }
         return Expanded(
           child: Container(
-            height: 8,
-            margin: const EdgeInsets.symmetric(horizontal: 1.5, vertical: 6),
+            height: 10,
+            margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
             decoration: BoxDecoration(
               color: c,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(5),
             ),
           ),
         );
@@ -752,26 +1058,32 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
   Widget build(BuildContext context) {
     final dates = _activeDateRange();
     final completedCount = widget.habit.completedDays.length;
-    final clampedTotal = widget.habit.goalDays > 0 ? widget.habit.goalDays : dates.length;
-    final progressRatio =
-        (completedCount / clampedTotal).clamp(0.0, 1.0).toDouble();
+    final clampedTotal =
+        widget.habit.goalDays > 0 ? widget.habit.goalDays : dates.length;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.habit.name)),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
+    return ZenAnimatedBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(title: Text(widget.habit.name)),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            Text("Category: ${widget.habit.category}"),
-            Text("Start: ${DateFormat.yMMMd().format(widget.habit.startDate)}"),
-            Text("End: ${DateFormat.yMMMd().format(widget.habit.endDate)}"),
-            const SizedBox(height: 10),
-            const Text("Progress"),
+            Text("Category: ${widget.habit.category}", textAlign: TextAlign.center),
+            const SizedBox(height: 6),
+            Text("Start: ${DateFormat.yMMMd().format(widget.habit.startDate)}",
+                textAlign: TextAlign.center),
+            Text("End: ${DateFormat.yMMMd().format(widget.habit.endDate)}",
+                textAlign: TextAlign.center),
+            const SizedBox(height: 14),
+            const Text("Progress", textAlign: TextAlign.center),
             _segmentedProgressBar(dates),
-            Text("$completedCount / ${widget.habit.goalDays} days completed"),
-            const SizedBox(height: 16),
-            const Text("History"),
-            const SizedBox(height: 8),
+            Text(
+              "$completedCount / ${widget.habit.goalDays} days completed",
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 18),
+            const Text("History", textAlign: TextAlign.center),
+            const SizedBox(height: 10),
             ...dates.map((d) {
               final today = DateTime.now();
               final todayDate = DateTime(today.year, today.month, today.day);
@@ -790,21 +1102,23 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
                 iconColor = Colors.grey;
                 style = style.copyWith(color: Colors.grey);
               } else if (done) {
-                tileColor = Theme.of(context).colorScheme.primary.withOpacity(0.10);
+                tileColor =
+                    Theme.of(context).colorScheme.primary.withOpacity(0.12);
                 icon = Icons.check_circle_rounded;
                 iconColor = Theme.of(context).colorScheme.primary;
-                style = style.copyWith(fontWeight: FontWeight.w600);
+                style = style.copyWith(fontWeight: FontWeight.w700);
               } else {
                 tileColor = Colors.redAccent.withOpacity(0.08);
-                icon = unlocked ? Icons.radio_button_unchecked : Icons.cancel_outlined;
+                icon =
+                    unlocked ? Icons.radio_button_unchecked : Icons.cancel_outlined;
                 iconColor = unlocked ? Colors.grey : Colors.redAccent;
               }
 
               return Container(
-                margin: const EdgeInsets.symmetric(vertical: 4),
+                margin: const EdgeInsets.symmetric(vertical: 5),
                 decoration: BoxDecoration(
                   color: tileColor,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: ListTile(
                   leading: Icon(icon, color: iconColor),
@@ -813,20 +1127,16 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
                       ? Text(widget.habit.notes[key]!)
                       : null,
                   onTap: () {
-                    if (isFuture) return; // cannot modify future
+                    if (isFuture) return;
                     if (done) {
                       _toggleComplete(d);
                     } else {
-                      if (unlocked) {
-                        _toggleComplete(d);
-                      }
+                      if (unlocked) _toggleComplete(d);
                     }
                   },
                   onLongPress: () {
                     if (!isFuture && !done && !unlocked) {
-                      setState(() {
-                        _unlockedDays.add(key);
-                      });
+                      setState(() => _unlockedDays.add(key));
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Day unlocked. Tap to mark as done.'),
@@ -844,12 +1154,10 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
               );
             }).toList(),
             const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent.shade100,
-              ),
+            ZenGradientButton(
+              icon: Icons.delete_outline,
+              label: "Delete Habit",
               onPressed: () => widget.onDelete(widget.habit),
-              child: const Text("Delete Habit"),
             ),
           ],
         ),
