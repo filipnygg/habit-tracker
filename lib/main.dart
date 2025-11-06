@@ -40,7 +40,7 @@ class _HabitTrackerAppState extends State<HabitTrackerApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Habit Tracker',
+      title: 'Habits',
       debugShowCheckedModeBanner: false,
       themeMode: _themeMode,
       theme: ThemeData(
@@ -69,10 +69,10 @@ class Habit {
   String category;
   DateTime startDate;
   DateTime endDate;
-  List<int> activeDays;
+  List<int> activeDays; // 1=Mon ... 7=Sun
   int goalDays;
-  List<DateTime> completedDays;
-  Map<String, String> notes;
+  List<DateTime> completedDays; // unique dates
+  Map<String, String> notes; // yyyy-MM-dd -> note
 
   Habit({
     required this.name,
@@ -152,7 +152,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _updateHabit(Habit habit) {
-    setState(() {});
+    setState(() {}); // mutate in place
     _saveHabits();
   }
 
@@ -188,6 +188,42 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  String _dateKey(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
+
+  Future<void> _editNoteFor(Habit habit, DateTime day) async {
+    final key = _dateKey(day);
+    final controller = TextEditingController(text: habit.notes[key] ?? '');
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Note • ${DateFormat.yMMMd().format(day)}'),
+        content: TextField(
+          controller: controller,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            hintText: 'Add a note...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (saved == true) {
+      setState(() {
+        final txt = controller.text.trim();
+        if (txt.isEmpty) {
+          habit.notes.remove(key);
+        } else {
+          habit.notes[key] = txt;
+        }
+      });
+      _saveHabits();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
@@ -198,6 +234,13 @@ class _HomePageState extends State<HomePage> {
           !today.isAfter(h.endDate);
     }).toList();
 
+    // Group by category
+    final grouped = <String, List<Habit>>{};
+    for (final h in todayHabits) {
+      final cat = h.category.trim().isEmpty ? "Other" : h.category;
+      grouped.putIfAbsent(cat, () => []).add(h);
+    }
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -206,7 +249,7 @@ class _HomePageState extends State<HomePage> {
             showDialog(
               context: context,
               builder: (_) => AlertDialog(
-                title: const Text("Habit Tracker v1.0"),
+                title: const Text("Habits v2.1"),
                 content: const Text("Made by Filip Nygren"),
                 actions: [
                   TextButton(
@@ -238,39 +281,80 @@ class _HomePageState extends State<HomePage> {
           : todayHabits.isEmpty
               ? const Center(child: Text("No habits for today"))
               : ListView(
-                  children: todayHabits.map((habit) {
-                    final done = habit.completedDays
-                        .any((d) => DateUtils.isSameDay(d, today));
-                    return ListTile(
-                      title: Text(habit.name),
-                      subtitle: Text(habit.category),
-                      trailing: Checkbox(
-                        value: done,
-                        onChanged: (val) {
-                          setState(() {
-                            if (val == true) {
-                              habit.completedDays.add(today);
-                            } else {
-                              habit.completedDays.removeWhere(
-                                (d) => DateUtils.isSameDay(d, today),
-                              );
-                            }
-                            _saveHabits();
-                          });
-                        },
-                      ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => HabitDetailPage(
-                              habit: habit,
-                              onDelete: _deleteHabit,
-                              onUpdate: _updateHabit,
-                            ),
+                  padding: const EdgeInsets.only(bottom: 80),
+                  children: grouped.entries.map((entry) {
+                    final cat = entry.key;
+                    final list = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            cat,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium!
+                                .copyWith(fontWeight: FontWeight.bold),
                           ),
-                        );
-                      },
+                          const SizedBox(height: 8),
+                          ...list.map((habit) {
+                            final done = habit.completedDays
+                                .any((d) => DateUtils.isSameDay(d, today));
+                            return Card(
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListTile(
+                                title: Text(habit.name),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      tooltip: 'Add note',
+                                      icon: const Icon(Icons.note_add_outlined),
+                                      onPressed: () => _editNoteFor(habit, today),
+                                    ),
+                                    Checkbox(
+                                      value: done,
+                                      onChanged: (val) {
+                                        setState(() {
+                                          if (val == true) {
+                                            final exists = habit.completedDays.any(
+                                              (d) => DateUtils.isSameDay(d, today),
+                                            );
+                                            if (!exists) {
+                                              habit.completedDays.add(today);
+                                            }
+                                          } else {
+                                            habit.completedDays.removeWhere(
+                                              (d) => DateUtils.isSameDay(d, today),
+                                            );
+                                          }
+                                          _saveHabits();
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => HabitDetailPage(
+                                        habit: habit,
+                                        onDelete: _deleteHabit,
+                                        onUpdate: _updateHabit,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
                     );
                   }).toList(),
                 ),
@@ -312,10 +396,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   icon: const Icon(Icons.list, size: 24),
-                  label: const Text(
-                    "All Habits",
-                    style: TextStyle(fontSize: 18),
-                  ),
+                  label: const Text("All Habits", style: TextStyle(fontSize: 18)),
                 ),
               ),
             ),
@@ -330,19 +411,22 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   onPressed: () async {
+                    final categories = habits
+                        .map((h) => h.category.trim())
+                        .where((c) => c.isNotEmpty)
+                        .toSet()
+                        .toList()
+                      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
                     final newHabit = await Navigator.push<Habit>(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const AddHabitPage(),
+                        builder: (_) => AddHabitPage(existingCategories: categories),
                       ),
                     );
                     if (newHabit != null) _addHabit(newHabit);
                   },
                   icon: const Icon(Icons.add, size: 26),
-                  label: const Text(
-                    "New Habit",
-                    style: TextStyle(fontSize: 18),
-                  ),
+                  label: const Text("New Habit", style: TextStyle(fontSize: 18)),
                 ),
               ),
             ),
@@ -354,7 +438,8 @@ class _HomePageState extends State<HomePage> {
 }
 
 class AddHabitPage extends StatefulWidget {
-  const AddHabitPage({super.key});
+  final List<String> existingCategories;
+  const AddHabitPage({super.key, required this.existingCategories});
 
   @override
   State<AddHabitPage> createState() => _AddHabitPageState();
@@ -362,14 +447,25 @@ class AddHabitPage extends StatefulWidget {
 
 class _AddHabitPageState extends State<AddHabitPage> {
   final nameCtrl = TextEditingController();
-  final categoryCtrl = TextEditingController();
+  final newCategoryCtrl = TextEditingController();
+  String? selectedCategory;
+
   DateTime startDate = DateTime.now();
   DateTime endDate = DateTime.now().add(const Duration(days: 30));
   List<int> selectedDays = [];
   int goalDays = 30;
 
+  String get finalCategory {
+    final picked = (selectedCategory ?? '').trim();
+    final typed = newCategoryCtrl.text.trim();
+    if (typed.isNotEmpty) return typed;
+    return picked;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final hasCategories = widget.existingCategories.isNotEmpty;
+
     return Scaffold(
       appBar: AppBar(title: const Text("New Habit")),
       body: Padding(
@@ -380,9 +476,21 @@ class _AddHabitPageState extends State<AddHabitPage> {
               controller: nameCtrl,
               decoration: const InputDecoration(labelText: "Habit name"),
             ),
+            const SizedBox(height: 12),
+            if (hasCategories)
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                decoration: const InputDecoration(labelText: "Pick a category"),
+                items: widget.existingCategories
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) => setState(() => selectedCategory = v),
+              ),
             TextField(
-              controller: categoryCtrl,
-              decoration: const InputDecoration(labelText: "Category"),
+              controller: newCategoryCtrl,
+              decoration: InputDecoration(
+                labelText: hasCategories ? "Or create new category" : "Category",
+              ),
             ),
             const SizedBox(height: 12),
             ListTile(
@@ -459,15 +567,17 @@ class _AddHabitPageState extends State<AddHabitPage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                if (nameCtrl.text.isEmpty) return;
+                if (nameCtrl.text.trim().isEmpty) return;
+                final category = finalCategory;
+                final active =
+                    selectedDays.isEmpty ? [1, 2, 3, 4, 5, 6, 7] : selectedDays;
+
                 final habit = Habit(
-                  name: nameCtrl.text,
-                  category: categoryCtrl.text,
+                  name: nameCtrl.text.trim(),
+                  category: category,
                   startDate: startDate,
                   endDate: endDate,
-                  activeDays: selectedDays.isEmpty
-                      ? [1, 2, 3, 4, 5, 6, 7]
-                      : selectedDays,
+                  activeDays: active,
                   goalDays: goalDays,
                   completedDays: [],
                   notes: {},
@@ -542,11 +652,109 @@ class HabitDetailPage extends StatefulWidget {
 }
 
 class _HabitDetailPageState extends State<HabitDetailPage> {
+  final Set<String> _unlockedDays = {}; // yyyy-MM-dd keys (long-press unlock)
+  String _dateKey(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
+
+  bool _isCompleted(DateTime day) =>
+      widget.habit.completedDays.any((d) => DateUtils.isSameDay(d, day));
+
+  void _toggleComplete(DateTime day) {
+    setState(() {
+      final idx = widget.habit.completedDays.indexWhere(
+          (d) => DateUtils.isSameDay(d, day));
+      if (idx >= 0) {
+        widget.habit.completedDays.removeAt(idx);
+      } else {
+        widget.habit.completedDays.add(day);
+      }
+    });
+    widget.onUpdate(widget.habit);
+  }
+
+  Future<void> _editNote(DateTime day) async {
+    final key = _dateKey(day);
+    final controller = TextEditingController(text: widget.habit.notes[key] ?? '');
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Note • ${DateFormat.yMMMd().format(day)}'),
+        content: TextField(
+          controller: controller,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            hintText: 'Add a note...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (saved == true) {
+      setState(() {
+        final txt = controller.text.trim();
+        if (txt.isEmpty) {
+          widget.habit.notes.remove(key);
+        } else {
+          widget.habit.notes[key] = txt;
+        }
+      });
+      widget.onUpdate(widget.habit);
+    }
+  }
+
+  List<DateTime> _activeDateRange() {
+    // Only include dates on the habit's active weekdays.
+    final dates = <DateTime>[];
+    DateTime d = DateTime(widget.habit.startDate.year, widget.habit.startDate.month, widget.habit.startDate.day);
+    final end = DateTime(widget.habit.endDate.year, widget.habit.endDate.month, widget.habit.endDate.day);
+    while (!d.isAfter(end)) {
+      if (widget.habit.activeDays.contains(d.weekday)) {
+        dates.add(d);
+      }
+      d = d.add(const Duration(days: 1));
+    }
+    return dates;
+  }
+
+  Widget _segmentedProgressBar(List<DateTime> days) {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    return Row(
+      children: days.map((d) {
+        final isFuture = d.isAfter(todayDate);
+        final isDone = _isCompleted(d);
+        Color c;
+        if (isFuture) {
+          c = Colors.grey.shade400;
+        } else if (isDone) {
+          c = Theme.of(context).colorScheme.primary;
+        } else {
+          c = Colors.redAccent; // missed
+        }
+        return Expanded(
+          child: Container(
+            height: 8,
+            margin: const EdgeInsets.symmetric(horizontal: 1.5, vertical: 6),
+            decoration: BoxDecoration(
+              color: c,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final dates = _activeDateRange();
     final completedCount = widget.habit.completedDays.length;
-    final progress =
-        (completedCount / widget.habit.goalDays).clamp(0.0, 1.0).toDouble();
+    final clampedTotal = widget.habit.goalDays > 0 ? widget.habit.goalDays : dates.length;
+    final progressRatio =
+        (completedCount / clampedTotal).clamp(0.0, 1.0).toDouble();
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.habit.name)),
@@ -555,18 +763,87 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
         child: ListView(
           children: [
             Text("Category: ${widget.habit.category}"),
-            Text(
-                "Start Date: ${DateFormat.yMMMd().format(widget.habit.startDate)}"),
-            Text(
-                "End Date: ${DateFormat.yMMMd().format(widget.habit.endDate)}"),
+            Text("Start: ${DateFormat.yMMMd().format(widget.habit.startDate)}"),
+            Text("End: ${DateFormat.yMMMd().format(widget.habit.endDate)}"),
             const SizedBox(height: 10),
-            Text(
-              "Active Days: ${widget.habit.activeDays.map((d) => DateFormat.E().format(DateTime(2023, 1, d + 1))).join(', ')}",
-            ),
-            const SizedBox(height: 20),
-            LinearProgressIndicator(value: progress),
+            const Text("Progress"),
+            _segmentedProgressBar(dates),
             Text("$completedCount / ${widget.habit.goalDays} days completed"),
-            const SizedBox(height: 30),
+            const SizedBox(height: 16),
+            const Text("History"),
+            const SizedBox(height: 8),
+            ...dates.map((d) {
+              final today = DateTime.now();
+              final todayDate = DateTime(today.year, today.month, today.day);
+              final isFuture = d.isAfter(todayDate);
+              final done = _isCompleted(d);
+              final key = _dateKey(d);
+              final unlocked = _unlockedDays.contains(key);
+
+              Color tileColor;
+              IconData icon;
+              Color iconColor;
+              TextStyle style = Theme.of(context).textTheme.bodyMedium!;
+              if (isFuture) {
+                tileColor = Colors.grey.withOpacity(0.08);
+                icon = Icons.lock_outline;
+                iconColor = Colors.grey;
+                style = style.copyWith(color: Colors.grey);
+              } else if (done) {
+                tileColor = Theme.of(context).colorScheme.primary.withOpacity(0.10);
+                icon = Icons.check_circle_rounded;
+                iconColor = Theme.of(context).colorScheme.primary;
+                style = style.copyWith(fontWeight: FontWeight.w600);
+              } else {
+                tileColor = Colors.redAccent.withOpacity(0.08);
+                icon = unlocked ? Icons.radio_button_unchecked : Icons.cancel_outlined;
+                iconColor = unlocked ? Colors.grey : Colors.redAccent;
+              }
+
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  color: tileColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  leading: Icon(icon, color: iconColor),
+                  title: Text(DateFormat.yMMMMd().format(d), style: style),
+                  subtitle: widget.habit.notes.containsKey(key)
+                      ? Text(widget.habit.notes[key]!)
+                      : null,
+                  onTap: () {
+                    if (isFuture) return; // cannot modify future
+                    if (done) {
+                      _toggleComplete(d);
+                    } else {
+                      if (unlocked) {
+                        _toggleComplete(d);
+                      }
+                    }
+                  },
+                  onLongPress: () {
+                    if (!isFuture && !done && !unlocked) {
+                      setState(() {
+                        _unlockedDays.add(key);
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Day unlocked. Tap to mark as done.'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    }
+                  },
+                  trailing: IconButton(
+                    tooltip: "Add / Edit note",
+                    icon: const Icon(Icons.note_add_outlined),
+                    onPressed: () => _editNote(d),
+                  ),
+                ),
+              );
+            }).toList(),
+            const SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent.shade100,
