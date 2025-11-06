@@ -8,7 +8,7 @@ void main() {
 }
 
 /// ----------------------------
-/// THEME & APP SHELL
+/// APP ROOT & THEME
 /// ----------------------------
 class HabitTrackerApp extends StatefulWidget {
   const HabitTrackerApp({super.key});
@@ -49,29 +49,26 @@ class _HabitTrackerAppState extends State<HabitTrackerApp> {
     const softGraphite = Color(0xFF1E1E22);
     const graphiteCard = Color(0xFF26272B);
 
-        final lightTheme = ThemeData(
+    final lightTheme = ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
         seedColor: mint,
         primary: mint,
         secondary: aqua,
-        surface: ivory, // ✅ replaced background (deprecated)
+        surface: ivory, // modern replacement for background
       ),
       scaffoldBackgroundColor: ivory,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.black87,
-        centerTitle: false,
+        centerTitle: true,
       ),
       textTheme: const TextTheme(
-        titleLarge: TextStyle(
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-        ),
+        titleLarge: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.3),
       ),
       cardTheme: const CardThemeData(
-        color: Colors.white, // ✅ replaced with CardThemeData
+        color: Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(20)),
@@ -86,21 +83,18 @@ class _HabitTrackerAppState extends State<HabitTrackerApp> {
         brightness: Brightness.dark,
         primary: mint,
         secondary: aqua,
-        surface: softGraphite, // ✅ replaced background
+        surface: softGraphite,
       ),
-      scaffoldBackgroundColor:
-          const Color(0xFF202125), // ✅ softer than pure black
-      cardColor: graphiteCard.withValues(alpha: 0.9), // ✅ new withValues
+      scaffoldBackgroundColor: const Color(0xFF202125), // softer than black
+      cardColor: graphiteCard.withValues(alpha: 0.9),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white70,
+        centerTitle: true,
       ),
       textTheme: const TextTheme(
-        titleLarge: TextStyle(
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-        ),
+        titleLarge: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.3),
       ),
       cardTheme: CardThemeData(
         color: graphiteCard.withValues(alpha: 0.9),
@@ -110,8 +104,9 @@ class _HabitTrackerAppState extends State<HabitTrackerApp> {
         ),
       ),
     );
+
     return MaterialApp(
-      title: 'Habits', // This does NOT change device display name.
+      title: 'Habits',
       debugShowCheckedModeBanner: false,
       themeMode: _themeMode,
       theme: lightTheme,
@@ -122,16 +117,16 @@ class _HabitTrackerAppState extends State<HabitTrackerApp> {
 }
 
 /// ----------------------------
-/// DATA MODEL
+/// MODEL
 /// ----------------------------
 class Habit {
   String name;
   String category;
   DateTime startDate;
   DateTime endDate;
-  List<int> activeDays; // 1=Mon ... 7=Sun
+  List<int> activeDays; // 1=Mon..7=Sun
   int goalDays;
-  List<DateTime> completedDays; // unique days
+  List<DateTime> completedDays; // unique dates
   Map<String, String> notes; // yyyy-MM-dd -> note
 
   Habit({
@@ -172,7 +167,7 @@ class Habit {
 }
 
 /// ----------------------------
-/// ANIMATED GRADIENT BACKGROUND
+/// ANIMATED BACKGROUND
 /// ----------------------------
 class ZenAnimatedBackground extends StatefulWidget {
   final Widget child;
@@ -191,7 +186,8 @@ class _ZenAnimatedBackgroundState extends State<ZenAnimatedBackground>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 8))
+    // softer, slower motion
+    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 20))
       ..repeat(reverse: true);
     _begin = AlignmentTween(
       begin: Alignment.topLeft,
@@ -212,7 +208,6 @@ class _ZenAnimatedBackgroundState extends State<ZenAnimatedBackground>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Light mint ↔ aqua; Dark: graphite ↔ mint
     final colors = isDark
         ? [const Color(0xFF1E1E22), const Color(0xFF2B2C31), const Color(0xFFA8E6CF)]
         : [const Color(0xFFA8E6CF), const Color(0xFFAEFFFF), const Color(0xFFFFFFFF)];
@@ -229,14 +224,15 @@ class _ZenAnimatedBackgroundState extends State<ZenAnimatedBackground>
                   begin: _begin.value,
                   end: _end.value,
                   colors: colors,
+                  transform: const GradientRotation(0.1),
                 ),
               ),
             ),
-            // Light veil for softness
+            // soft veil
             Container(
               color: isDark
-                  ? Colors.black.withOpacity(0.25)
-                  : Colors.white.withOpacity(0.25),
+                  ? Colors.black.withValues(alpha: 0.20)
+                  : Colors.white.withValues(alpha: 0.15),
             ),
             widget.child,
           ],
@@ -247,7 +243,7 @@ class _ZenAnimatedBackgroundState extends State<ZenAnimatedBackground>
 }
 
 /// ----------------------------
-/// ANIMATED GRADIENT BUTTON
+/// ANIMATED BUTTON
 /// ----------------------------
 class ZenGradientButton extends StatefulWidget {
   final IconData icon;
@@ -274,16 +270,19 @@ class _ZenGradientButtonState extends State<ZenGradientButton>
   @override
   void initState() {
     super.initState();
-    _ctrl =
-        AnimationController(vsync: this, duration: const Duration(seconds: 6))
-          ..repeat(reverse: true);
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 14), // slower
+    )..repeat(reverse: true);
+
     _begin = AlignmentTween(
       begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
+      end: Alignment.centerRight, // smaller travel
     ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+
     _end = AlignmentTween(
-      begin: Alignment(0.8, -0.6),
-      end: Alignment(-0.6, 0.8),
+      begin: const Alignment(0.6, -0.6),
+      end: const Alignment(-0.4, 0.6),
     ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
@@ -296,7 +295,6 @@ class _ZenGradientButtonState extends State<ZenGradientButton>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final colors = isDark
         ? [const Color(0xFF3A3B40), const Color(0xFFA8E6CF)]
         : [const Color(0xFFA8E6CF), const Color(0xFFAEFFFF)];
@@ -315,7 +313,7 @@ class _ZenGradientButtonState extends State<ZenGradientButton>
             borderRadius: BorderRadius.circular(22),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.25 : 0.12),
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.10),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -330,7 +328,9 @@ class _ZenGradientButtonState extends State<ZenGradientButton>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(widget.icon, size: 24, color: isDark ? Colors.white : Colors.black87),
+                    Icon(widget.icon,
+                        size: 24,
+                        color: isDark ? Colors.white : Colors.black87),
                     const SizedBox(width: 10),
                     Text(
                       widget.label,
@@ -384,13 +384,13 @@ class _HomePageState extends State<HomePage> {
   Future<void> _saveHabits() async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setStringList(
-        'habits', habits.map((e) => jsonEncode(e.toJson())).toList());
+      'habits',
+      habits.map((e) => jsonEncode(e.toJson())).toList(),
+    );
   }
 
   void _addHabit(Habit habit) {
-    setState(() {
-      habits.add(habit);
-    });
+    setState(() => habits.add(habit));
     _saveHabits();
   }
 
@@ -427,7 +427,7 @@ class _HomePageState extends State<HomePage> {
         habits.remove(habit);
       });
       _saveHabits();
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
     }
   }
 
@@ -471,7 +471,6 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final today = DateTime.now();
     final weekday = today.weekday;
-
     final todayHabits = habits.where((h) {
       return h.activeDays.contains(weekday) &&
           !today.isBefore(h.startDate) &&
@@ -485,7 +484,7 @@ class _HomePageState extends State<HomePage> {
       grouped.putIfAbsent(cat, () => []).add(h);
     }
 
-    // Build categories for "New Habit"
+    // Categories for AddHabit dropdown
     final categories = habits
         .map((h) => h.category.trim())
         .where((c) => c.isNotEmpty)
@@ -493,18 +492,22 @@ class _HomePageState extends State<HomePage> {
         .toList()
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
+    final secondaryTextColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white70
+        : Colors.black87;
+
     return ZenAnimatedBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          toolbarHeight: 86, // moved down for calm spacing
+          toolbarHeight: 86, // breathing room
           leading: IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {
               showDialog(
                 context: context,
                 builder: (_) => AlertDialog(
-                  title: const Text("Habits v2.2 Zen Mint"),
+                  title: const Text("Habits v2.3 Zen Mint"),
                   content: const Text("Made by Filip Nygren"),
                   actions: [
                     TextButton(
@@ -519,7 +522,6 @@ class _HomePageState extends State<HomePage> {
           title: Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const Text("Today's Habits", textAlign: TextAlign.center),
                 const SizedBox(height: 4),
@@ -553,38 +555,42 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // Centered category title
+                            // Centered category title, same tone as headers
                             Align(
                               alignment: Alignment.center,
-                              child: ShaderMask(
-                                shaderCallback: (rect) => const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [Color(0xFFA8E6CF), Color(0xFFAEFFFF)],
-                                ).createShader(rect),
-                                child: Text(
-                                  cat,
-                                  style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.white,
-                                        letterSpacing: 0.3,
-                                      ),
-                                  textAlign: TextAlign.center,
-                                ),
+                              child: Text(
+                                cat,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium!
+                                    .copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: secondaryTextColor,
+                                      letterSpacing: 0.3,
+                                    ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
                             const SizedBox(height: 10),
                             ...list.map((habit) {
-                              final done = habit.completedDays
-                                  .any((d) => DateUtils.isSameDay(d, today));
+                              final done = habit.completedDays.any(
+                                (d) => DateUtils.isSameDay(d, today),
+                              );
                               return Card(
-                                elevation: 0,
-                                margin: const EdgeInsets.symmetric(vertical: 8),
+                                elevation: 4,
+                                shadowColor:
+                                    Colors.black.withValues(alpha: 0.08),
+                                margin:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 16, vertical: 18),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
                                     children: [
                                       Text(
                                         habit.name,
@@ -592,50 +598,77 @@ class _HomePageState extends State<HomePage> {
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleMedium!
-                                            .copyWith(fontWeight: FontWeight.w800),
+                                            .copyWith(
+                                              fontWeight: FontWeight.w800,
+                                            ),
                                       ),
                                       const SizedBox(height: 10),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           FilledButton.tonalIcon(
-                                            onPressed: () => _editNoteFor(habit, today),
-                                            icon: const Icon(Icons.note_add_outlined),
+                                            onPressed: () =>
+                                                _editNoteFor(habit, today),
+                                            icon: const Icon(
+                                                Icons.note_add_outlined),
                                             label: const Text("Note"),
                                             style: FilledButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(
-                                                  horizontal: 16, vertical: 10),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 10),
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(20),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
                                               ),
                                             ),
                                           ),
                                           const SizedBox(width: 10),
-                                          FilledButton.icon(
+                                          // Check button matches Note style
+                                          FilledButton.tonalIcon(
                                             onPressed: () {
                                               setState(() {
                                                 if (done) {
-                                                  habit.completedDays.removeWhere(
-                                                    (d) => DateUtils.isSameDay(d, today),
-                                                  );
+                                                  habit.completedDays
+                                                      .removeWhere((d) =>
+                                                          DateUtils.isSameDay(
+                                                              d, today));
                                                 } else {
-                                                  final exists = habit.completedDays.any(
-                                                    (d) => DateUtils.isSameDay(d, today),
-                                                  );
-                                                  if (!exists) habit.completedDays.add(today);
+                                                  final exists = habit
+                                                      .completedDays
+                                                      .any((d) => DateUtils
+                                                          .isSameDay(
+                                                              d, today));
+                                                  if (!exists) {
+                                                    habit.completedDays
+                                                        .add(today);
+                                                  }
                                                 }
                                                 _saveHabits();
                                               });
                                             },
                                             icon: Icon(done
                                                 ? Icons.check_circle
-                                                : Icons.radio_button_unchecked),
-                                            label: Text(done ? "Checked" : "Check"),
+                                                : Icons
+                                                    .radio_button_unchecked),
+                                            label: Text(
+                                                done ? "Checked" : "Check"),
                                             style: FilledButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(
-                                                  horizontal: 18, vertical: 10),
+                                              backgroundColor:
+                                                  Theme.of(context)
+                                                      .colorScheme
+                                                      .primary
+                                                      .withValues(alpha: 0.25),
+                                              foregroundColor:
+                                                  secondaryTextColor,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 18,
+                                                      vertical: 10),
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(20),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
                                               ),
                                             ),
                                           ),
@@ -647,10 +680,10 @@ class _HomePageState extends State<HomePage> {
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodySmall
-                                            ?.copyWith(color: Colors.black54),
+                                            ?.copyWith(
+                                                color: secondaryTextColor),
                                       ),
                                       const SizedBox(height: 4),
-                                      // Tap the card to open details
                                       TextButton(
                                         onPressed: () {
                                           Navigator.push(
@@ -664,7 +697,12 @@ class _HomePageState extends State<HomePage> {
                                             ),
                                           );
                                         },
-                                        child: const Text("Details"),
+                                        child: Text(
+                                          "Details",
+                                          style: TextStyle(
+                                            color: secondaryTextColor,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -676,8 +714,7 @@ class _HomePageState extends State<HomePage> {
                       );
                     }).toList(),
                   ),
-
-        // Floating gradient buttons, no container; lifted higher
+        // Floating gradient buttons (no container), lifted higher
         bottomNavigationBar: SafeArea(
           minimum: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           child: Row(
@@ -862,8 +899,9 @@ class _AddHabitPageState extends State<AddHabitPage> {
               onPressed: () {
                 if (nameCtrl.text.trim().isEmpty) return;
                 final category = finalCategory;
-                final active =
-                    selectedDays.isEmpty ? [1, 2, 3, 4, 5, 6, 7] : selectedDays;
+                final active = selectedDays.isEmpty
+                    ? [1, 2, 3, 4, 5, 6, 7]
+                    : selectedDays;
 
                 final habit = Habit(
                   name: nameCtrl.text.trim(),
@@ -902,6 +940,10 @@ class AllHabitsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final secondaryTextColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white70
+        : Colors.black87;
+
     return ZenAnimatedBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -912,10 +954,16 @@ class AllHabitsPage extends StatelessWidget {
           itemBuilder: (_, i) {
             final h = habits[i];
             return Card(
+              elevation: 4,
+              shadowColor: Colors.black.withValues(alpha: 0.08),
               margin: const EdgeInsets.symmetric(vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: ListTile(
                 title: Text(h.name, textAlign: TextAlign.center),
-                subtitle: Text(h.category, textAlign: TextAlign.center),
+                subtitle:
+                    Text(h.category, textAlign: TextAlign.center, style: TextStyle(color: secondaryTextColor)),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -1058,8 +1106,10 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
   Widget build(BuildContext context) {
     final dates = _activeDateRange();
     final completedCount = widget.habit.completedDays.length;
-    final clampedTotal =
-        widget.habit.goalDays > 0 ? widget.habit.goalDays : dates.length;
+
+    final secondaryTextColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white70
+        : Colors.black87;
 
     return ZenAnimatedBackground(
       child: Scaffold(
@@ -1068,18 +1118,20 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text("Category: ${widget.habit.category}", textAlign: TextAlign.center),
+            Text("Category: ${widget.habit.category}",
+                textAlign: TextAlign.center, style: TextStyle(color: secondaryTextColor)),
             const SizedBox(height: 6),
             Text("Start: ${DateFormat.yMMMd().format(widget.habit.startDate)}",
-                textAlign: TextAlign.center),
+                textAlign: TextAlign.center, style: TextStyle(color: secondaryTextColor)),
             Text("End: ${DateFormat.yMMMd().format(widget.habit.endDate)}",
-                textAlign: TextAlign.center),
+                textAlign: TextAlign.center, style: TextStyle(color: secondaryTextColor)),
             const SizedBox(height: 14),
             const Text("Progress", textAlign: TextAlign.center),
             _segmentedProgressBar(dates),
             Text(
               "$completedCount / ${widget.habit.goalDays} days completed",
               textAlign: TextAlign.center,
+              style: TextStyle(color: secondaryTextColor),
             ),
             const SizedBox(height: 18),
             const Text("History", textAlign: TextAlign.center),
@@ -1097,20 +1149,21 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
               Color iconColor;
               TextStyle style = Theme.of(context).textTheme.bodyMedium!;
               if (isFuture) {
-                tileColor = Colors.grey.withOpacity(0.08);
+                tileColor = Colors.grey.withValues(alpha: 0.08);
                 icon = Icons.lock_outline;
                 iconColor = Colors.grey;
                 style = style.copyWith(color: Colors.grey);
               } else if (done) {
                 tileColor =
-                    Theme.of(context).colorScheme.primary.withOpacity(0.12);
+                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.12);
                 icon = Icons.check_circle_rounded;
                 iconColor = Theme.of(context).colorScheme.primary;
                 style = style.copyWith(fontWeight: FontWeight.w700);
               } else {
-                tileColor = Colors.redAccent.withOpacity(0.08);
-                icon =
-                    unlocked ? Icons.radio_button_unchecked : Icons.cancel_outlined;
+                tileColor = Colors.redAccent.withValues(alpha: 0.08);
+                icon = unlocked
+                    ? Icons.radio_button_unchecked
+                    : Icons.cancel_outlined;
                 iconColor = unlocked ? Colors.grey : Colors.redAccent;
               }
 
